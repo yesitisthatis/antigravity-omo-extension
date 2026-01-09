@@ -2,7 +2,7 @@
   "name": "antigravity-omo",
   "displayName": "Oh My OpenCode for Antigravity",
   "description": "Multi-agent AI orchestration with zero config - The power of Oh My OpenCode, native to Antigravity",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "antigravity-omo",
   "repository": {
     "type": "git",
@@ -206,6 +206,12 @@
           "default": true,
           "description": "Show authentication method in status bar",
           "markdownDescription": "Display authentication status (🔐 OAuth, 🔑 API Key, 🆓 Free) in status bar."
+        },
+        "omo.auth.tokens": {
+          "type": "string",
+          "default": "",
+          "description": "OAuth tokens (DO NOT EDIT MANUALLY)",
+          "markdownDescription": "**Internal use only** - Stores encrypted OAuth tokens. Managed automatically by the extension."
         }
       }
     }

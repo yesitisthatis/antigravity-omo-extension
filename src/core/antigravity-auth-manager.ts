@@ -1,27 +1,34 @@
 import * as vscode from 'vscode';
+import * as http from 'http';
+import {
+    createAuthorizationUrl,
+    startCallbackServer,
+    exchangeCodeForTokens,
+    fetchAccountInfo,
+    refreshAccessToken,
+    type TokenExchangeResult,
+} from './antigravity-oauth';
 
 /**
- * OAuth session information
+ * Stored token data
  */
-interface OAuthSession {
-    id: string;
+interface StoredTokens {
     accessToken: string;
-    account: {
-        id: string;
-        label: string; // email
-    };
-    scopes: string[];
+    refreshToken: string;
+    expiresAt: number;
+    email?: string;
+    projectId?: string;
+    tier?: 'free' | 'paid';
 }
 
 /**
  * Manages Antigravity OAuth authentication
- * Detects and uses Google OAuth credentials from Antigravity IDE
+ * Uses proper OAuth flow with PKCE and local callback server
  */
 export class AntigravityAuthManager {
     private static instance: AntigravityAuthManager;
-    private cachedSession: OAuthSession | null = null;
-    private cacheExpiry: number = 0;
-    private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    private cachedTokens: StoredTokens | null = null;
+    private callbackServer: http.Server | null = null;
 
     private constructor() { }
 
@@ -33,12 +40,12 @@ export class AntigravityAuthManager {
     }
 
     /**
-     * Check if user is authenticated with Google via Antigravity
+     * Check if user is authenticated
      */
     async isAuthenticated(): Promise<boolean> {
         try {
-            const session = await this.getSession();
-            return session !== null;
+            const tokens = await this.getTokens();
+            return tokens !== null;
         } catch (error) {
             console.error('Failed to check authentication:', error);
             return false;
@@ -46,12 +53,38 @@ export class AntigravityAuthManager {
     }
 
     /**
-     * Get OAuth access token for Gemini API
+     * Get access token (refreshes if expired)
      */
     async getAccessToken(): Promise<string | null> {
         try {
-            const session = await this.getSession();
-            return session?.accessToken || null;
+            const tokens = await this.getTokens();
+            if (!tokens) {
+                return null;
+            }
+
+            // Check if token is expired or about to expire (within 5 minutes)
+            if (Date.now() >= tokens.expiresAt - 5 * 60 * 1000) {
+                console.log('Access token expired, refreshing...');
+                const result = await refreshAccessToken(tokens.refreshToken);
+
+                if (result.success && result.accessToken) {
+                    // Update stored tokens
+                    const newTokens: StoredTokens = {
+                        ...tokens,
+                        accessToken: result.accessToken,
+                        expiresAt: Date.now() + (result.expiresIn || 3600) * 1000,
+                    };
+                    await this.storeTokens(newTokens);
+                    this.cachedTokens = newTokens;
+                    return result.accessToken;
+                } else {
+                    // Refresh failed, clear tokens
+                    await this.clearTokens();
+                    return null;
+                }
+            }
+
+            return tokens.accessToken;
         } catch (error) {
             console.error('Failed to get access token:', error);
             return null;
@@ -62,103 +95,166 @@ export class AntigravityAuthManager {
      * Get authenticated user's email
      */
     async getUserEmail(): Promise<string | null> {
-        try {
-            const session = await this.getSession();
-            return session?.account.label || null;
-        } catch (error) {
-            console.error('Failed to get user email:', error);
-            return null;
-        }
+        const tokens = await this.getTokens();
+        return tokens?.email || null;
     }
 
     /**
-     * Refresh OAuth token (invalidate cache)
+     * Get detected tier (free or paid)
+     */
+    async getTier(): Promise<'free' | 'paid'> {
+        const tokens = await this.getTokens();
+        return tokens?.tier || 'free';
+    }
+
+    /**
+     * Refresh OAuth token
      */
     async refreshToken(): Promise<void> {
-        this.invalidateCache();
-        await this.getSession();
+        this.cachedTokens = null; // Invalidate cache
+        await this.getAccessToken(); // This will trigger refresh if needed
     }
 
     /**
-     * Get OAuth session from VSCode authentication API
+     * Prompt user to login via Google OAuth
      */
-    private async getSession(): Promise<OAuthSession | null> {
-        // Check cache first
-        if (this.cachedSession && Date.now() < this.cacheExpiry) {
-            return this.cachedSession;
-        }
-
+    async promptLogin(): Promise<boolean> {
         try {
-            // Check if OAuth is enabled in settings
+            // Check if OAuth is enabled
             const config = vscode.workspace.getConfiguration('omo');
             const useOAuth = config.get<boolean>('auth.useAntigravityOAuth', true);
 
             if (!useOAuth) {
-                console.log('Antigravity OAuth disabled in settings');
+                vscode.window.showWarningMessage('Antigravity OAuth is disabled in settings.');
+                return false;
+            }
+
+            // Start callback server
+            vscode.window.showInformationMessage('Starting OAuth flow...');
+            const { server, codePromise } = await startCallbackServer();
+            this.callbackServer = server;
+
+            // Create auth URL
+            const { url } = createAuthorizationUrl();
+
+            // Open browser
+            vscode.window.showInformationMessage('Opening browser for authentication...');
+            await vscode.env.openExternal(vscode.Uri.parse(url));
+
+            // Wait for callback (with timeout)
+            const timeoutPromise = new Promise<{ code: string; state: string }>((_, reject) => {
+                setTimeout(() => reject(new Error('OAuth timeout')), 5 * 60 * 1000); // 5 minutes
+            });
+
+            const { code, state } = await Promise.race([codePromise, timeoutPromise]);
+
+            // Close server
+            server.close();
+            this.callbackServer = null;
+
+            if (!code) {
+                vscode.window.showErrorMessage('OAuth failed: No authorization code received');
+                return false;
+            }
+
+            // Exchange code for tokens
+            vscode.window.showInformationMessage('Exchanging code for tokens...');
+            const result = await exchangeCodeForTokens(code, state);
+
+            if (!result.success || !result.accessToken || !result.refreshToken) {
+                vscode.window.showErrorMessage(`OAuth failed: ${result.error || 'Unknown error'}`);
+                return false;
+            }
+
+            // Store tokens
+            const tokens: StoredTokens = {
+                accessToken: result.accessToken,
+                refreshToken: result.refreshToken,
+                expiresAt: Date.now() + (result.expiresIn || 3600) * 1000,
+                email: result.email,
+                projectId: result.projectId,
+                tier: result.tier,
+            };
+
+            await this.storeTokens(tokens);
+            this.cachedTokens = tokens;
+
+            // Show success
+            const tierEmoji = result.tier === 'paid' ? '⭐' : '🆓';
+            vscode.window.showInformationMessage(
+                `✓ Authenticated as: ${result.email}. Tier: ${tierEmoji} ${result.tier?.toUpperCase()}`
+            );
+
+            return true;
+        } catch (error) {
+            if (this.callbackServer) {
+                this.callbackServer.close();
+                this.callbackServer = null;
+            }
+
+            console.error('Login failed:', error);
+            vscode.window.showErrorMessage(`Failed to login: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            return false;
+        }
+    }
+
+    /**
+     * Get stored tokens (from VSCode secrets)
+     */
+    private async getTokens(): Promise<StoredTokens | null> {
+        // Return cached if available
+        if (this.cachedTokens) {
+            return this.cachedTokens;
+        }
+
+        try {
+            // Get from VSCode secrets storage
+            const tokensJson = await vscode.workspace.getConfiguration().get<string>('omo.auth.tokens');
+            if (!tokensJson) {
                 return null;
             }
 
-            // Try to get existing session (don't create new one)
-            const session = await vscode.authentication.getSession('google', [
-                'email',
-                'https://www.googleapis.com/auth/generative-language.retriever'
-            ], {
-                createIfNone: false,
-                silent: true
-            });
-
-            if (session) {
-                // Cache the session
-                this.cachedSession = session as unknown as OAuthSession;
-                this.cacheExpiry = Date.now() + this.CACHE_DURATION;
-
-                console.log(`✓ Authenticated as: ${session.account.label}`);
-                return this.cachedSession;
-            }
-
-            return null;
+            const tokens = JSON.parse(tokensJson) as StoredTokens;
+            this.cachedTokens = tokens;
+            return tokens;
         } catch (error) {
-            console.error('Failed to get OAuth session:', error);
+            console.error('Failed to get stored tokens:', error);
             return null;
         }
     }
 
     /**
-     * Prompt user to login (open Antigravity auth dialog)
+     * Store tokens in VSCode secrets
      */
-    async promptLogin(): Promise<boolean> {
+    private async storeTokens(tokens: StoredTokens): Promise<void> {
         try {
-            const session = await vscode.authentication.getSession('google', [
-                'email',
-                'https://www.googleapis.com/auth/generative-language.retriever'
-            ], {
-                createIfNone: true // This will prompt user to login
-            });
-
-            if (session) {
-                this.cachedSession = session as unknown as OAuthSession;
-                this.cacheExpiry = Date.now() + this.CACHE_DURATION;
-
-                vscode.window.showInformationMessage(
-                    `✓ Authenticated as: ${session.account.label}. Pro features unlocked!`
-                );
-                return true;
-            }
-
-            return false;
+            const tokensJson = JSON.stringify(tokens);
+            await vscode.workspace.getConfiguration().update(
+                'omo.auth.tokens',
+                tokensJson,
+                vscode.ConfigurationTarget.Global
+            );
+            this.cachedTokens = tokens;
         } catch (error) {
-            console.error('Login failed:', error);
-            vscode.window.showErrorMessage('Failed to login with Google. Please try again.');
-            return false;
+            console.error('Failed to store tokens:', error);
+            throw error;
         }
     }
 
     /**
-     * Invalidate cached session
+     * Clear stored tokens
      */
-    invalidateCache(): void {
-        this.cachedSession = null;
-        this.cacheExpiry = 0;
+    private async clearTokens(): Promise<void> {
+        try {
+            await vscode.workspace.getConfiguration().update(
+                'omo.auth.tokens',
+                undefined,
+                vscode.ConfigurationTarget.Global
+            );
+            this.cachedTokens = null;
+        } catch (error) {
+            console.error('Failed to clear tokens:', error);
+        }
     }
 
     /**
@@ -168,7 +264,7 @@ export class AntigravityAuthManager {
         authenticated: boolean;
         method: 'oauth' | 'api-key' | 'none';
         email?: string;
-        scopes?: string[];
+        tier?: 'free' | 'paid';
     }> {
         // Check manual API key first
         const config = vscode.workspace.getConfiguration('omo');
@@ -177,24 +273,24 @@ export class AntigravityAuthManager {
         if (manualKey) {
             return {
                 authenticated: true,
-                method: 'api-key'
+                method: 'api-key',
             };
         }
 
         // Check OAuth
-        const session = await this.getSession();
-        if (session) {
+        const tokens = await this.getTokens();
+        if (tokens) {
             return {
                 authenticated: true,
                 method: 'oauth',
-                email: session.account.label,
-                scopes: session.scopes
+                email: tokens.email,
+                tier: tokens.tier,
             };
         }
 
         return {
             authenticated: false,
-            method: 'none'
+            method: 'none',
         };
     }
 }

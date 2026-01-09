@@ -119,19 +119,25 @@ export class SubscriptionManager {
             if (configuredTier === 'enterprise') return SubscriptionTier.ENTERPRISE;
         }
 
-        // Priority 2: Check Antigravity OAuth authentication
+        // Priority 2: Check Antigravity OAuth authentication with tier detection
         const { AntigravityAuthManager } = require('./antigravity-auth-manager');
         const authManager = AntigravityAuthManager.getInstance();
 
         if (await authManager.isAuthenticated()) {
-            // Authenticated users get Pro tier automatically
-            console.log('✓ Antigravity OAuth detected - Pro tier enabled');
+            // Get detected tier from OAuth (free or paid)
+            const oauthTier = await authManager.getTier();
+            console.log(`✓ Antigravity OAuth detected - ${oauthTier} tier`);
 
-            // If user manually set to Enterprise, honor it
-            if (configuredTier === 'enterprise') return SubscriptionTier.ENTERPRISE;
+            // Map OAuth tier to subscription tier
+            // free → FREE, paid → PRO
+            let detectedTier = oauthTier === 'paid' ? SubscriptionTier.PRO : SubscriptionTier.FREE;
 
-            // Otherwise, OAuth gives Pro tier
-            return SubscriptionTier.PRO;
+            // Allow manual override to ENTERPRISE if user explicitly configured it
+            if (configuredTier === 'enterprise') {
+                detectedTier = SubscriptionTier.ENTERPRISE;
+            }
+
+            return detectedTier;
         }
 
         // Priority 3: Manual API key (if no OAuth)

@@ -8,7 +8,7 @@ import { LSPHoverTool } from './tools/lsp/hover';
 import { LSPGotoDefinitionTool } from './tools/lsp/goto-definition';
 import { LSPFindReferencesTool } from './tools/lsp/find-references';
 import { LSPRenameTool } from './tools/lsp/rename';
-import { AgentManager } => './agents/agent-manager';
+import { AgentManager } from './agents/agent-manager';
 import { SisyphusAgent } from './agents/sisyphus';
 import { OracleAgent, ExploreAgent, LibrarianAgent } from './agents/specialists';
 import { BackgroundTaskRunner } from './agents/background-runner';

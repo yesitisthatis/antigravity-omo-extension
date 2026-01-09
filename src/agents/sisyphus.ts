@@ -102,7 +102,7 @@ You have access to all LSP tools and code modification capabilities.`;
      * Execute complex task with delegation
      */
     private async executeComplexTask(context: AgentContext): Promise<AgentResponse> {
-        const subtasks = this.breakdown Task(context.task);
+        const subtasks = this.breakdownTask(context.task);
         const results: string[] = [];
         let totalTokens = 0;
         let totalCost = 0;

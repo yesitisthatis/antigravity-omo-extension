@@ -1,84 +1,128 @@
 # Oh My OpenCode for Antigravity
 
-> **Status:** 🚧 In Development - Week 1  
-> **Version:** 0.1.0  
-> **License:** MIT
+> **Multi-Agent AI Orchestration - Zero Configuration Required**
 
-The best AI agent orchestration system, now native to Google Antigravity. Brings the power of Oh My OpenCode's multi-agent system (Sisyphus, Oracle, Librarian) with zero configuration.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](./LICENSE)
 
 ## ✨ Features
 
-**🤖 Multi-Agent Orchestration**
-- Sisyphus: Main orchestrator with task delegation
-- Oracle: Strategic debugging & architecture (Pro)
-- Librarian: Documentation & codebase exploration
-- Explore: Blazing fast code search
-- Frontend Engineer: UI/UX specialist (Pro)
+### 🤖 **Intelligent Multi-Agent System**
+- **Sisyphus**: Main orchestrator - breaks down complex tasks and delegates to specialists
+- **Oracle**: Strategic debugging & architectural analysis (Pro)
+- **Librarian**: Documentation expert and codebase knowledge
+- **Explore**: Blazing-fast code search powered by free models  
+- **Frontend Engineer**: UI/UX specialist (Pro)
 
-**🧠 Long-Term Memory** ⭐ NEW
+### 🧠 **Long-Term Memory** ⭐ NEW
 - Remembers project knowledge across sessions
-- Auto-saves important information
-- Semantic search of past conversations
-- `/supermemory-init` for codebase indexing
+- Auto-saves important information from conversations
+- Semantic search through past discussions
+- `/supermemory-init` command for codebase indexing
 
-**🔧 Advanced Tools**
-- **LSP Integration:** hover, goto-definition, find-references, rename
-- **AST-Grep:** Semantic code search & refactoring (25+ languages)
-- **Session Management:** Search conversation history
-- **Google Search:** Real-time web knowledge (Pro)
+### 🔧 **Powerful Tools**
+- **LSP Integration**: hover, goto-definition, find-references, rename
+- **AST-Grep**: Semantic code search & refactoring (25+ languages)
+- **Conversation Search**: Find past solutions instantly
+- **Google Search**: Real-time web knowledge (Pro)
 
-**⚡ Zero Configuration**
-- Auto-detects project type
-- Auto-installs LSP servers
-- Auto-configures agents
+### ⚡ **Zero Configuration**
+- Auto-detects project type and framework
+- Auto-installs language servers
+- Auto-configures agents for your stack
 - Works out of the box
 
-**🎫 Subscription-Aware**
-- **Free Tier:** Gemini Flash + Grok Code, LSP tools, basic agents
-- **Pro Tier:** All premium models, background tasks, MCPs, 5+ agents
-- Multi-account rotation for higher quotas
+### 🎫 **Subscription-Aware**
+**Free Tier:**
+- Gemini Flash + Grok Code models
+- 2 active agents
+- All LSP tools
+- Core features
 
-**🚀 Workflows**
+**Pro Tier:**
+- All premium models (GPT-5.2, Claude Opus, Gemini Pro)
+- 10 concurrent agents
+- Background task execution
+- All MCPs (Exa, Context7, grep.app)
+- Supermemory & advanced workflows
+- $50/month cost cap
+
+### 🚀 **Workflows**
 - `ulw` (ultrawork): Full autonomous task completion
-- Custom workflows via YAML
+- Custom YAML workflows
 - Background parallel execution (Pro)
+- Smart TODO enforcement
 
-## 🎯 Quick Start
+## 📦 Installation
 
 ```bash
-# Install from marketplace
-code --install-extension antigravity-omo
+# Install from VSCode Marketplace
+ext install antigravity-omo
 
 # Or install from .vsix
 code --install-extension antigravity-omo-0.1.0.vsix
 ```
 
-**First Use:**
-1. Extension installs → Auto-detects your project
-2. Type `ulw` in chat
-3. Watch Sisyphus orchestrate the work ✨
+## 🎯 Quick Start
 
-## 📊 Project Status
+1. **Install** the extension
+2. Open any project - OmO auto-detects everything
+3. Type `ulw implement login page` in chat
+4. Watch Sisyphus orchestrate the work ✨
 
-**Week 1:** Foundation & Infrastructure (In Progress)
-- [x] Project setup
-- [ ] TypeScript configuration
-- [ ] Build tooling
-- [ ] LSP integration
-- [ ] Subscription system
+## 🏗️ Architecture
 
-See [TASK_BOARD.md](./TASK_BOARD.md) for detailed progress.
+```
+OmO Extension
+├── Core Managers
+│   ├── Subscription (Free/Pro/Enterprise detection)
+│   ├── Multi-Account (Rate limit avoidance)
+│   ├── Config (Tier-aware capabilities)
+│   └── Endpoint Fallback (Reliability)
+├── Agent System
+│   ├── Base Agent Framework
+│   ├── Agent Manager & Registry
+│   ├── Sisyphus (Orchestrator)
+│   └── Specialists (Oracle, Librarian, Explore, FE)
+├── Tools
+│   ├── LSP (4 core tools)
+│   ├── AST-Grep (Search & Replace)
+│   └── MCP Integrations
+└── UI
+    ├── Status Bar
+    ├── Settings Panel
+    └── Notifications
+```
+
+## 📊 Development Status
+
+**Current Version:** 0.1.0 (Beta)  
+**Completion:** 33% (Week 2/6 complete)
+
+**✅ Implemented:**
+- Week 1: Foundation & Infrastructure
+- Week 2: Agent System & Orchestration
+
+**🚧 In Progress:**
+- Week 3: AST-Grep & Supermemory
+- Week 4: Workflows & MCPs
+- Week 5: UI/UX & Polish
+- Week 6: Testing & Launch
 
 ## 🤝 Contributing
 
-This project is in active development. Contributions welcome!
+Contributions welcome! This is a rapidly evolving project.
 
 ## 📝 License
 
-MIT © 2026
+MIT © 2026 OmO Contributors
 
 ## 🔗 Links
 
-- [Oh My OpenCode](https://github.com/code-yeongyu/oh-my-opencode)
+- [Original Oh My OpenCode](https://github.com/code-yeongyu/oh-my-opencode)
 - [Google Antigravity](https://antigravity.google.com)
-- [Task Board](./TASK_BOARD.md)
+- [Documentation](./docs)
+
+---
+
+Built with ❤️ for the Antigravity ecosystem

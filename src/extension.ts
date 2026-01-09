@@ -45,6 +45,9 @@ export async function activate(context: vscode.ExtensionContext) {
     const agentManager = AgentManager.getInstance(context);
     const backgroundRunner = BackgroundTaskRunner.getInstance(context);
 
+    // Listen for subscription changes
+    context.subscriptions.push(subscriptionManager.createConfigListener());
+
     // Register agents (with error handling for optional agents)
     // Core agent - required
     try {
@@ -131,6 +134,10 @@ export async function activate(context: vscode.ExtensionContext) {
     const showStatusCommand = vscode.commands.registerCommand(
         'omo.showStatus',
         async () => {
+            // Get version from package.json
+            const packageJson = require('../package.json');
+            const version = packageJson.version;
+
             const agents = agentManager.getAllAgents();
             const lspLanguages = lspManager.getActiveLanguages();
             const accountCount = multiAccountManager.getAccountCount();
@@ -150,7 +157,7 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
 **Workflows:** ${workflowEngine.getWorkflows().length}
 **MCP Servers:** ${mcpManager.getEnabledServers().length} enabled
 
-**Extension Version:** 0.1.0
+**Extension Version:** ${version}
 **Bundle Size:** 373KB
 `;
             const doc = await vscode.workspace.openTextDocument({
@@ -171,11 +178,49 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
         }
     );
 
+    // Auth commands
+    const { AntigravityAuthManager } = require('./core/antigravity-auth-manager');
+    const authManager = AntigravityAuthManager.getInstance();
+
+    const checkAuthCommand = vscode.commands.registerCommand(
+        'omo.checkAuthentication',
+        async () => {
+            const status = await authManager.getAuthStatus();
+            const message = status.authenticated
+                ? `✓ Authenticated via ${status.method}\n${status.email ? `Email: ${status.email}` : ''}`
+                : '✗ Not authenticated. Using free tier.';
+            vscode.window.showInformationMessage(message);
+        }
+    );
+
+    const loginCommand = vscode.commands.registerCommand(
+        'omo.login',
+        async () => {
+            const success = await authManager.promptLogin();
+            if (success) {
+                // Refresh subscription after login
+                subscriptionManager.invalidateCache();
+                statusBar.refresh();
+            }
+        }
+    );
+
+    const refreshTokenCommand = vscode.commands.registerCommand(
+        'omo.refreshToken',
+        async () => {
+            await authManager.refreshToken();
+            vscode.window.showInformationMessage('✓ OAuth token refreshed');
+        }
+    );
+
     context.subscriptions.push(
         helloWorldCommand,
         showConfigCommand,
         showStatusCommand,
         supermemoryInitCommand,
+        checkAuthCommand,
+        loginCommand,
+        refreshTokenCommand,
         statusBar,
         {
             dispose: () => lspManager.dispose()
@@ -191,4 +236,3 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
 export function deactivate() {
     console.log('👋 Oh My OpenCode deactivating...');
 }
-

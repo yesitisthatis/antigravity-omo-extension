@@ -35,6 +35,14 @@ export class StatusBarManager {
      * Update status bar display
      */
     async updateStatusBar(): Promise<void> {
+        const config = vscode.workspace.getConfiguration('omo');
+        const statusBarEnabled = config.get<boolean>('statusBar.enabled', true);
+
+        if (!statusBarEnabled) {
+            this.statusBarItem.hide();
+            return;
+        }
+
         const subscriptionManager = SubscriptionManager.getInstance(this.context);
         const agentManager = AgentManager.getInstance(this.context);
         const supermemory = SupermemoryManager.getInstance(this.context);
@@ -43,12 +51,32 @@ export class StatusBarManager {
         const agentCount = agentManager.getAllAgents().length;
         const memoryCount = supermemory.getMemoryCount();
 
-        // Tier emoji
-        const tierEmoji = this.getTierEmoji(subscription.tier);
+        // Tier emoji (with auth status if enabled)
+        const showAuthStatus = config.get<boolean>('auth.showAuthStatus', true);
+        let tierEmoji = this.getTierEmoji(subscription.tier);
+
+        if (showAuthStatus) {
+            const { AntigravityAuthManager } = require('../core/antigravity-auth-manager');
+            const authManager = AntigravityAuthManager.getInstance();
+            const authStatus = await authManager.getAuthStatus();
+
+            if (authStatus.authenticated) {
+                tierEmoji = authStatus.method === 'oauth' ? '🔐' : '🔑';
+            }
+        }
 
         // Status text
-        this.statusBarItem.text = `${tierEmoji} OmO | ${agentCount} agents | ${memoryCount} mem`;
+        this.statusBarItem.text = `OmO: ${tierEmoji} ${subscription.tier.toUpperCase()} | 👥 ${agentCount} agents | 🧠 ${memoryCount}`;
         this.statusBarItem.tooltip = `Oh My OpenCode\nTier: ${subscription.tier.toUpperCase()}\nAgents: ${agentCount}\nMemories: ${memoryCount}\n\nClick for details`;
+
+        this.statusBarItem.show();
+    }
+
+    /**
+     * Manually refresh status bar
+     */
+    refresh(): void {
+        this.updateStatusBar();
     }
 
     /**

@@ -54,6 +54,18 @@ export class SubscriptionManager {
     }
 
     /**
+     * Build the configuration change listener
+     */
+    public createConfigListener(): vscode.Disposable {
+        return vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('omo.tier')) {
+                console.log('OmO: Subscription tier configuration changed. Refreshing...');
+                this.invalidateCache();
+            }
+        });
+    }
+
+    /**
      * Get user's subscription information
      */
     async getSubscription(): Promise<SubscriptionInfo> {
@@ -83,23 +95,52 @@ export class SubscriptionManager {
      * Detect subscription tier from Antigravity
      */
     private async detectSubscriptionTier(): Promise<SubscriptionInfo> {
-        // TODO: Actual implementation will query Antigravity API
-        // For now, default to FREE tier for development
+        // Priority 1: Check manual tier override in settings
+        const tier = await this.detectTierFromEnvironment();
 
-        // Check for Antigravity environment variable or config
-        const tier = this.detectTierFromEnvironment();
-
+        // Return detected tier
         return this.getTierSubscription(tier);
     }
 
     /**
-     * Detect tier from environment (fallback)
+     * Detect tier from environment (OAuth + settings)
      */
-    private detectTierFromEnvironment(): SubscriptionTier {
-        // Check workspace configuration
+    private async detectTierFromEnvironment(): Promise<SubscriptionTier> {
         const config = vscode.workspace.getConfiguration('omo');
         const configuredTier = config.get<string>('tier');
+        const preferManualKey = config.get<boolean>('auth.preferManualApiKey', false);
 
+        // Check if manual API key is provided
+        const manualKey = config.get<string>('apiKeys.gemini');
+
+        // Priority 1: Manual API key (if preferManualApiKey is true)
+        if (preferManualKey && manualKey) {
+            if (configuredTier === 'pro') return SubscriptionTier.PRO;
+            if (configuredTier === 'enterprise') return SubscriptionTier.ENTERPRISE;
+        }
+
+        // Priority 2: Check Antigravity OAuth authentication
+        const { AntigravityAuthManager } = require('./antigravity-auth-manager');
+        const authManager = AntigravityAuthManager.getInstance();
+
+        if (await authManager.isAuthenticated()) {
+            // Authenticated users get Pro tier automatically
+            console.log('✓ Antigravity OAuth detected - Pro tier enabled');
+
+            // If user manually set to Enterprise, honor it
+            if (configuredTier === 'enterprise') return SubscriptionTier.ENTERPRISE;
+
+            // Otherwise, OAuth gives Pro tier
+            return SubscriptionTier.PRO;
+        }
+
+        // Priority 3: Manual API key (if no OAuth)
+        if (manualKey) {
+            if (configuredTier === 'pro') return SubscriptionTier.PRO;
+            if (configuredTier === 'enterprise') return SubscriptionTier.ENTERPRISE;
+        }
+
+        // Priority 4: Configured tier setting
         if (configuredTier === 'pro') return SubscriptionTier.PRO;
         if (configuredTier === 'enterprise') return SubscriptionTier.ENTERPRISE;
 

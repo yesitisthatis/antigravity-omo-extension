@@ -2,7 +2,7 @@
   "name": "antigravity-omo",
   "displayName": "Oh My OpenCode for Antigravity",
   "description": "Multi-agent AI orchestration with zero config - The power of Oh My OpenCode, native to Antigravity",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "publisher": "antigravity-omo",
   "repository": {
     "type": "git",
@@ -42,11 +42,76 @@
       {
         "command": "omo.showStatus",
         "title": "OmO: Show Status"
+      },
+      {
+        "command": "omo.supermemoryInit",
+        "title": "OmO: Supermemory Init"
+      },
+      {
+        "command": "omo.checkAuthentication",
+        "title": "OmO: Check Authentication"
+      },
+      {
+        "command": "omo.login",
+        "title": "OmO: Login with Google"
+      },
+      {
+        "command": "omo.refreshToken",
+        "title": "OmO: Refresh OAuth Token"
+      },
+      {
+        "command": "omo.zen.configure",
+        "title": "OmO: Configure OpenCode Zen"
+      },
+      {
+        "command": "omo.zen.testConnection",
+        "title": "OmO: Test Zen Connection"
+      },
+      {
+        "command": "omo.zen.listModels",
+        "title": "OmO: List Zen Models"
       }
     ],
     "configuration": {
-      "title": "Oh My OpenCode",
+      "title": "OmO - Oh My OpenCode",
       "properties": {
+        "omo.apiKeys.gemini": {
+          "type": "string",
+          "default": "",
+          "description": "Google Gemini API Key (for Pro tier agents)",
+          "markdownDescription": "Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey). Required for Oracle agent."
+        },
+        "omo.apiKeys.opencodeZen": {
+          "type": "string",
+          "default": "",
+          "description": "OpenCode Zen API Key",
+          "markdownDescription": "Get your API key from [OpenCode Zen](https://opencode.ai/auth). Access to curated AI models (GPT, Claude, Gemini)."
+        },
+        "omo.zen.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable OpenCode Zen integration",
+          "markdownDescription": "Use OpenCode Zen's curated model gateway for AI features."
+        },
+        "omo.zen.preferredModel": {
+          "type": "string",
+          "enum": [
+            "gpt-4-turbo",
+            "gpt-5.1-codex",
+            "claude-opus-4-5",
+            "claude-sonnet-4-5",
+            "gemini-3-pro-high"
+          ],
+          "default": "gpt-4-turbo",
+          "description": "Preferred model for OpenCode Zen",
+          "enumDescriptions": [
+            "GPT-4 Turbo - Fast and efficient",
+            "GPT-5.1 Codex - Best for code generation",
+            "Claude Opus 4.5 - Deep reasoning",
+            "Claude Sonnet 4.5 - Balanced performance",
+            "Gemini 3 Pro High - Google's best"
+          ]
+        },
         "omo.tier": {
           "type": "string",
           "enum": [
@@ -55,12 +120,92 @@
             "enterprise"
           ],
           "default": "free",
-          "description": "Subscription tier (auto-detected or manual override)"
+          "description": "Subscription tier",
+          "enumDescriptions": [
+            "Free tier - 2 agents, basic features",
+            "Pro tier - 4 agents, Oracle debugging, background tasks",
+            "Enterprise tier - Unlimited agents, advanced features"
+          ]
+        },
+        "omo.agents.sisyphus.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "✓ Sisyphus - Main orchestrator agent (Always enabled)"
+        },
+        "omo.agents.oracle.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Oracle - Strategic debugging agent (Requires Gemini API key)"
+        },
+        "omo.agents.explore.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "✓ Explore - Codebase search and exploration agent"
+        },
+        "omo.agents.librarian.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "✓ Librarian - Documentation and knowledge agent"
+        },
+        "omo.supermemory.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Supermemory long-term knowledge storage"
+        },
+        "omo.supermemory.privacyTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "private",
+            "secret",
+            "confidential"
+          ],
+          "description": "Privacy tags to prevent auto-save (comma-separated)"
+        },
+        "omo.workflows.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable YAML workflow engine"
+        },
+        "omo.lsp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable LSP integration for code intelligence"
+        },
+        "omo.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show OmO status in status bar"
+        },
+        "omo.statusBar.showMemoryCount": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show memory count in status bar"
         },
         "omo.enableBackgroundTasks": {
           "type": "boolean",
           "default": true,
-          "description": "Enable background task execution (Pro tier)"
+          "description": "Enable background task execution (Pro tier feature)"
+        },
+        "omo.auth.useAntigravityOAuth": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use Antigravity's Google OAuth for automatic Pro tier upgrade",
+          "markdownDescription": "When enabled, automatically detect Antigravity Google login and enable Pro features without manual API key."
+        },
+        "omo.auth.preferManualApiKey": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prefer manual API key over Antigravity OAuth",
+          "markdownDescription": "If both OAuth and manual API key are available, prioritize the manual key."
+        },
+        "omo.auth.showAuthStatus": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show authentication method in status bar",
+          "markdownDescription": "Display authentication status (🔐 OAuth, 🔑 API Key, 🆓 Free) in status bar."
         }
       }
     }
@@ -80,6 +225,7 @@
     "vitest": "^1.1.0"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "vscode-languageclient": "^9.0.1"
   },
   "license": "MIT",

@@ -45,11 +45,33 @@ export async function activate(context: vscode.ExtensionContext) {
     const agentManager = AgentManager.getInstance(context);
     const backgroundRunner = BackgroundTaskRunner.getInstance(context);
 
-    // Register agents
-    await agentManager.registerAgent(new SisyphusAgent(context));
-    await agentManager.registerAgent(new OracleAgent(context));
-    await agentManager.registerAgent(new ExploreAgent(context));
-    await agentManager.registerAgent(new LibrarianAgent(context));
+    // Register agents (with error handling for optional agents)
+    // Core agent - required
+    try {
+        await agentManager.registerAgent(new SisyphusAgent(context));
+    } catch (error) {
+        console.error('Failed to register Sisyphus:', error);
+        throw error; // Critical failure
+    }
+
+    // Optional agents - degrade gracefully
+    try {
+        await agentManager.registerAgent(new OracleAgent(context));
+    } catch (error) {
+        console.log('Oracle agent not available (requires Pro tier configuration)');
+    }
+
+    try {
+        await agentManager.registerAgent(new ExploreAgent(context));
+    } catch (error) {
+        console.log('Explore agent not available:', error);
+    }
+
+    try {
+        await agentManager.registerAgent(new LibrarianAgent(context));
+    } catch (error) {
+        console.log('Librarian agent not available:', error);
+    }
 
     // Initialize Week 3-4 features
     const astGrepTool = new ASTGrepTool();

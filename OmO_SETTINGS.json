@@ -1,0 +1,49 @@
+{
+    "contributes": {
+        "configuration": {
+            "title": "OmO - Oh My OpenCode",
+            "properties": {
+                "omo.agents.sisyphus.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable Sisyphus orchestrator agent (required)"
+                },
+                "omo.agents.oracle.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable Oracle debugging agent (Pro tier)"
+                },
+                "omo.agents.explore.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable Explore search agent"
+                },
+                "omo.agents.librarian.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable Librarian documentation agent"
+                },
+                "omo.supermemory.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable Supermemory long-term storage"
+                },
+                "omo.workflows.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable YAML workflow engine"
+                },
+                "omo.lsp.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable LSP integration for agents"
+                },
+                "omo.statusBar.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show OmO status in status bar"
+                }
+            }
+        }
+    }
+}

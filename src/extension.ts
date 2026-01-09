@@ -18,7 +18,11 @@ import { WorkflowEngine, createUltraworkWorkflow } from './workflows/workflow-en
 import { MCPManager } from './mcp/mcp-manager';
 import { StatusBarManager } from './ui/status-bar';
 import { ProjectDetector } from './ui/project-detector';
-import { logger } from './core/logger';
+import { AskAgentCommand } from './commands/ask-agent';
+import { GenerateCodeCommand } from './commands/generate-code';
+import { ExplainSelectionCommand } from './commands/explain-selection';
+import { ChatBridge } from './api/chat-bridge';
+
 
 /**
  * Extension activation - called when extension is first loaded
@@ -113,7 +117,74 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     loggerInstance.success('OmO Extension activated successfully!');
-    console.log('✓ OmO Extension activated');
+    // Setup OpenMemory auto-sync on save (Layer 2 automation)
+    const { getOpenMemoryClient } = require('./tools/openmemory-client');
+    const openMemoryClient = getOpenMemoryClient();
+
+    // Check if OpenMemory is available
+    const isMemoryAvailable = await openMemoryClient.isHealthy();
+    if (isMemoryAvailable) {
+        console.log('✓ OpenMemory connected - auto-sync enabled');
+
+        // Watch for document saves
+        const saveWatcher = vscode.workspace.onDidSaveTextDocument(async (document) => {
+            const filePath = document.uri.fsPath;
+
+            // Only sync markdown files from brain or plans
+            if (!filePath.endsWith('.md')) {
+                return;
+            }
+
+            const isBrainArtifact = filePath.includes('.gemini/antigravity/brain');
+            const isPlan = filePath.includes('.agent/plans');
+            const isHelixDoc = filePath.includes('/helix/') && (filePath.endsWith('CONTEXT.md') || filePath.endsWith('README.md'));
+
+            if (isBrainArtifact || isPlan || isHelixDoc) {
+                // Skip .resolved and .metadata files
+                if (filePath.includes('.resolved') || filePath.includes('.metadata')) {
+                    return;
+                }
+
+                try {
+                    const content = document.getText();
+                    const fileName = filePath.split('/').pop() || 'unknown';
+
+                    // Determine category and priority
+                    let category = 'documentation';
+                    let priority = 'medium';
+
+                    if (isBrainArtifact) {
+                        category = 'artifact';
+                        priority = fileName.includes('master_knowledge') || fileName.includes('complete_overview') ? 'critical' : 'high';
+                    } else if (isPlan) {
+                        category = 'plan';
+                        priority = 'high';
+                    }
+
+                    await openMemoryClient.store(content, {
+                        category,
+                        priority,
+                        file: fileName,
+                        auto_synced: true,
+                        synced_from: 'vscode_save_hook',
+                        updated: new Date().toISOString()
+                    });
+
+                    console.log(`✓ Auto-synced to OpenMemory: ${fileName}`);
+                } catch (error) {
+                    console.error('OpenMemory auto-sync failed:', error);
+                }
+            }
+        });
+
+        context.subscriptions.push(saveWatcher);
+    } else {
+        console.log('⚠ OpenMemory not available - auto-sync disabled');
+        console.log('  Start with: cd ~/helix/tools/openmemory && ./start.sh');
+    }
+
+    console.log('✓ OmO Extension activated successfully');
+    console.log('');
 
     // Get user's subscription and config
     const subscription = await subscriptionManager.getSubscription();
@@ -143,6 +214,50 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    // Toggle verbose logging command
+    const toggleLoggingCommand = vscode.commands.registerCommand(
+        'omo.toggleVerboseLogging',
+        async () => {
+            const config = vscode.workspace.getConfiguration('omo');
+            const currentVerbose = config.get<boolean>('logging.verbose', false);
+            const newValue = !currentVerbose;
+
+            await config.update('logging.verbose', newValue, vscode.ConfigurationTarget.Global);
+
+            if (newValue) {
+                const showOnStartup = config.get<boolean>('logging.showOnStartup', false);
+                if (!showOnStartup) {
+                    const ans = await vscode.window.showInformationMessage(
+                        'Verbose logging enabled. Show output panel on startup?',
+                        'Yes', 'No'
+                    );
+                    if (ans === 'Yes') {
+                        await config.update('logging.showOnStartup', true, vscode.ConfigurationTarget.Global);
+                    }
+                }
+                vscode.window.showInformationMessage('✓ Verbose logs ENABLED (Output: OmO Extension)');
+
+                // Force show output
+                const { Logger } = require('./core/logger');
+                Logger.getInstance().show();
+            } else {
+                vscode.window.showInformationMessage('Verbose logs DISABLED');
+            }
+        }
+    );
+
+    // Ask Agent - Interactive command for querying OmO agents
+    const askAgentCommandHandler = new AskAgentCommand(context);
+    const askAgentCommand = askAgentCommandHandler.register();
+
+    // Generate Code - AI-powered code generation
+    const generateCodeCommandHandler = new GenerateCodeCommand(context);
+    const generateCodeCommand = generateCodeCommandHandler.register();
+
+    // Explain Selection - AI-powered code explanation
+    const explainSelectionCommandHandler = new ExplainSelectionCommand(context);
+    const explainSelectionCommand = explainSelectionCommandHandler.register();
+
     // Register show config command
     const showConfigCommand = vscode.commands.registerCommand(
         'omo.showConfig',
@@ -168,9 +283,19 @@ export async function activate(context: vscode.ExtensionContext) {
             const lspLanguages = lspManager.getActiveLanguages();
             const accountCount = multiAccountManager.getAccountCount();
 
+            const { AIProviderManager } = require('./core/ai-provider-manager');
+            const providerStatus = await AIProviderManager.getInstance().getProviderStatus();
+            const providerStatusText = providerStatus.map((s: any) =>
+                `  - ${s.provider}: ${s.active ? '🟢 ACTIVE' : s.available ? '⚪ Available' : '🔴 Unavailable'} ${s.error ? `(${s.error})` : ''}`
+            ).join('\n');
+
             const status = `# OmO System Status
 
 **Subscription:** ${subscription.tier.toUpperCase()}
+
+**AI Providers:**
+${providerStatusText}
+
 **Active Agents:** ${agents.length}
 ${agents.map(a => `  - ${a.name}`).join('\n')}
 
@@ -331,6 +456,10 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
 
     context.subscriptions.push(
         helloWorldCommand,
+        toggleLoggingCommand,
+        askAgentCommand,
+        generateCodeCommand,
+        explainSelectionCommand,
         showConfigCommand,
         showStatusCommand,
         supermemoryInitCommand,
@@ -347,6 +476,23 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
     );
 
     console.log('✓ Oh My OpenCode activated successfully!');
+
+    // Export API for external systems (Antigravity Chat, etc.)
+    const chatBridge = new ChatBridge(context);
+    return {
+        // Main API for chat integration
+        askOmO: async (query: string, chatContext?: any) => {
+            return await chatBridge.handleChatQuery(query, chatContext || {});
+        },
+        // Get available agents
+        getAgents: async () => {
+            return await chatBridge.getAvailableAgents();
+        },
+        // Check if OmO is ready
+        isReady: async () => {
+            return await chatBridge.isReady();
+        }
+    };
 }
 
 /**

@@ -8,6 +8,10 @@ import { LSPHoverTool } from './tools/lsp/hover';
 import { LSPGotoDefinitionTool } from './tools/lsp/goto-definition';
 import { LSPFindReferencesTool } from './tools/lsp/find-references';
 import { LSPRenameTool } from './tools/lsp/rename';
+import { AgentManager } from './agents/agent-manager';
+import { SisyphusAgent } from './agents/sisyphus';
+import { OracleAgent, ExploreAgent, LibrarianAgent } from './agents/specialists';
+import { BackgroundTaskRunner } from './agents/background-runner';
 
 /**
  * Extension activation - called when extension is first loaded
@@ -31,6 +35,16 @@ export async function activate(context: vscode.ExtensionContext) {
     const findRefsTool = new LSPFindReferencesTool(context);
     const renameTool = new LSPRenameTool(context);
 
+    // Initialize Agent System
+    const agentManager = AgentManager.getInstance(context);
+    const backgroundRunner = BackgroundTaskRunner.getInstance(context);
+
+    // Register agents
+    await agentManager.registerAgent(new SisyphusAgent(context));
+    await agentManager.registerAgent(new OracleAgent(context));
+    await agentManager.registerAgent(new ExploreAgent(context));
+    await agentManager.registerAgent(new LibrarianAgent(context));
+
     // Get user's subscription and config
     const subscription = await subscriptionManager.getSubscription();
     const config = await configManager.getConfig();
@@ -39,6 +53,7 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log(`✓ Available agents: ${Object.keys(config.agents).length}`);
     console.log(`✓ Active accounts: ${multiAccountManager.getAccountCount()}`);
     console.log(`✓ LSP servers: ${lspManager.getActiveLanguages().join(', ') || 'none'}`);
+    console.log(`✓ Registered agents: ${agentManager.getAllAgents().length}`);
 
     // Register hello world command (for testing)
     const helloWorldCommand = vscode.commands.registerCommand(
@@ -46,8 +61,9 @@ export async function activate(context: vscode.ExtensionContext) {
         async () => {
             const tierEmoji = subscription.tier === 'pro' ? '⭐' : subscription.tier === 'enterprise' ? '🏢' : '🆓';
             const lspCount = lspManager.getActiveLanguages().length;
+            const agentCount = agentManager.getAllAgents().length;
             vscode.window.showInformationMessage(
-                `${tierEmoji} OmO is ready! Tier: ${subscription.tier.toUpperCase()} | Agents: ${Object.keys(config.agents).length} | LSP: ${lspCount}`
+                `${tierEmoji} OmO is ready! Tier: ${subscription.tier.toUpperCase()} | Agents: ${agentCount} | LSP: ${lspCount}`
             );
         }
     );

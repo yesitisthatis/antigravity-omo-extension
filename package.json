@@ -35,8 +35,36 @@
       {
         "command": "omo.helloWorld",
         "title": "OmO: Hello World"
+      },
+      {
+        "command": "omo.showConfig",
+        "title": "OmO: Show Configuration"
+      },
+      {
+        "command": "omo.showStatus",
+        "title": "OmO: Show Status"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Oh My OpenCode",
+      "properties": {
+        "omo.tier": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro",
+            "enterprise"
+          ],
+          "default": "free",
+          "description": "Subscription tier (auto-detected or manual override)"
+        },
+        "omo.enableBackgroundTasks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable background task execution (Pro tier)"
+        }
+      }
+    }
   },
   "scripts": {
     "build": "node build.js",

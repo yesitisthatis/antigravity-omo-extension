@@ -81,9 +81,41 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    // Register show status command
+    const showStatusCommand = vscode.commands.registerCommand(
+        'omo.showStatus',
+        async () => {
+            const agents = agentManager.getAllAgents();
+            const lspLanguages = lspManager.getActiveLanguages();
+            const accountCount = multiAccountManager.getAccountCount();
+
+            const status = `# OmO System Status
+
+**Subscription:** ${subscription.tier.toUpperCase()}
+**Active Agents:** ${agents.length}
+${agents.map(a => `  - ${a.name}`).join('\n')}
+
+**LSP Servers:** ${lspLanguages.length}
+${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
+
+**Accounts:** ${accountCount}
+**Background Tasks:** ${config.backgroundTasks ? 'Enabled' : 'Disabled'}
+
+**Extension Version:** 0.1.0
+**Bundle Size:** 373KB
+`;
+            const doc = await vscode.workspace.openTextDocument({
+                content: status,
+                language: 'markdown'
+            });
+            await vscode.window.showTextDocument(doc);
+        }
+    );
+
     context.subscriptions.push(
         helloWorldCommand,
         showConfigCommand,
+        showStatusCommand,
         {
             dispose: () => lspManager.dispose()
         }

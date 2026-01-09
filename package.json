@@ -2,7 +2,7 @@
   "name": "antigravity-omo",
   "displayName": "Oh My OpenCode for Antigravity",
   "description": "Multi-agent AI orchestration with zero config - The power of Oh My OpenCode, native to Antigravity",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "antigravity-omo",
   "repository": {
     "type": "git",
@@ -96,21 +96,48 @@
         "omo.zen.preferredModel": {
           "type": "string",
           "enum": [
-            "gpt-4-turbo",
-            "gpt-5.1-codex",
             "claude-opus-4-5",
+            "claude-opus-4-1",
+            "claude-sonnet-4",
             "claude-sonnet-4-5",
-            "gemini-3-pro-high"
+            "claude-3-5-haiku",
+            "claude-haiku-4-5",
+            "gemini-3-pro",
+            "gemini-3-flash",
+            "gpt-5.2",
+            "gpt-5.1",
+            "gpt-5",
+            "gpt-5.1-codex-max",
+            "gpt-5.1-codex",
+            "gpt-5-codex",
+            "gpt-5.1-codex-mini",
+            "gpt-5-nano",
+            "qwen3-coder",
+            "glm-4.6",
+            "kimi-k2",
+            "kimi-k2-thinking",
+            "minimax-m2.1-free",
+            "glm-4.7-free",
+            "grok-code",
+            "alpha-glm-4.7",
+            "alpha-gd4",
+            "big-pickle"
           ],
-          "default": "gpt-4-turbo",
-          "description": "Preferred model for OpenCode Zen",
-          "enumDescriptions": [
-            "GPT-4 Turbo - Fast and efficient",
-            "GPT-5.1 Codex - Best for code generation",
-            "Claude Opus 4.5 - Deep reasoning",
-            "Claude Sonnet 4.5 - Balanced performance",
-            "Gemini 3 Pro High - Google's best"
-          ]
+          "default": "claude-sonnet-4-5",
+          "description": "Preferred Zen model for agents",
+          "markdownDescription": "Agents will automatically use this Zen model when **omo.zen.enabled** is true."
+        },
+        "omo.logging.verbose": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose logging",
+          "markdownDescription": "Show detailed logs for agents, providers, and internal operations in the Output panel."
+        },
+        "omo.logging.showOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show Output panel on startup",
+          "markdownDescription": "Automatically open the OmO Output panel when verbose logging is enabled."
         },
         "omo.tier": {
           "type": "string",

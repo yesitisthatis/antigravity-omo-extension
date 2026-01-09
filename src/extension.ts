@@ -30,8 +30,16 @@ export async function activate(context: vscode.ExtensionContext) {
     const configManager = ConfigManager.getInstance(context);
     const multiAccountManager = MultiAccountManager.getInstance(context);
     const endpointManager = EndpointFallbackManager.getInstance();
+    const agentManager = AgentManager.getInstance(context);
+    const supermemory = SupermemoryManager.getInstance(context);
 
-    // Initialize LSP
+    //  Initialize AI Provider Manager (for auto-selecting Zen/Gemini)
+    const { AIProviderManager } = require('./core/ai-provider-manager');
+    const providerManager = AIProviderManager.getInstance();
+    await providerManager.initialize();
+    console.log('✓ AI Provider Manager initialized');
+
+    // Initialize managers
     const lspManager = LSPManager.getInstance(context);
     await lspManager.initialize();
 
@@ -41,8 +49,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const findRefsTool = new LSPFindReferencesTool(context);
     const renameTool = new LSPRenameTool(context);
 
-    // Initialize Agent System
-    const agentManager = AgentManager.getInstance(context);
+    // Background runner
     const backgroundRunner = BackgroundTaskRunner.getInstance(context);
 
     // Listen for subscription changes
@@ -78,7 +85,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Initialize Week 3-4 features
     const astGrepTool = new ASTGrepTool();
-    const supermemory = SupermemoryManager.getInstance(context);
     const workflowEngine = WorkflowEngine.getInstance(context);
     const mcpManager = MCPManager.getInstance(context);
 

@@ -72,20 +72,33 @@ export abstract class BaseAgent {
      */
     async execute(context: AgentContext): Promise<AgentResponse> {
         try {
-            console.log(`🤖 ${this.name} executing: ${context.task.substring(0, 100)}...`);
+            const { logger } = require('../core/logger');
+            logger.agent(this.name, `Executing: ${context.task.substring(0, 100)}...`);
 
             const startTime = Date.now();
+
+            // Use AI provider if available (Zen → Gemini → fallback)
+            const { AIProviderManager } = require('../core/ai-provider-manager');
+            const providerManager = AIProviderManager.getInstance();
+            const provider = await providerManager.getProvider();
+
+            if (provider) {
+                const model = await providerManager.getCurrentModel();
+                logger.provider(provider.name, `Using model: ${model}`);
+            }
+
             const result = await this.doExecute(context);
             const duration = Date.now() - startTime;
 
-            console.log(`✓ ${this.name} completed in ${duration}ms`);
+            logger.success(`${this.name} completed in ${duration}ms`);
 
             // Track cost
             await this.configManager.trackCost(this.config.model, result.tokensUsed);
 
             return result;
         } catch (error) {
-            console.error(`✗ ${this.name} failed:`, error);
+            const { logger } = require('../core/logger');
+            logger.error(`${this.name} failed:`, error);
             return {
                 success: false,
                 result: `Error: ${error instanceof Error ? error.message : 'Unknown'}`,

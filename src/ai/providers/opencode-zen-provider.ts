@@ -1,40 +1,34 @@
 import { OpenCodeZenClient } from '../../integrations/opencode-zen-client';
-
-/**
- * AI Provider interface
- */
-export interface AIProvider {
-    name: string;
-    authenticate(): Promise<boolean>;
-    generateCode(prompt: string, context?: string): Promise<string>;
-    isAvailable(): Promise<boolean>;
-    getModels(): Promise<string[]>;
-}
+import * as vscode from 'vscode';
 
 /**
  * OpenCode Zen AI Provider
  * Uses OpenCode's curated model gateway
  */
-export class OpenCodeZenProvider implements AIProvider {
+export class OpenCodeZenProvider {
     name = 'OpenCode Zen';
     private client: OpenCodeZenClient;
-    private selectedModel: string = 'gpt-4-turbo';
+    private selectedModel: string;
 
     constructor(apiKey?: string) {
         this.client = new OpenCodeZenClient();
         if (apiKey) {
             this.client.setApiKey(apiKey);
         }
+
+        // Get preferred model from settings
+        const config = vscode.workspace.getConfiguration('omo');
+        this.selectedModel = config.get<string>('zen.preferredModel', 'claude-sonnet-4-5');
     }
 
     /**
-     * Authenticate with OpenCode Zen
+     * Check if provider is available
      */
-    async authenticate(): Promise<boolean> {
+    async isAvailable(): Promise<boolean> {
         try {
             return await this.client.testConnection();
         } catch (error) {
-            console.error('OpenCode Zen authentication failed:', error);
+            console.error('OpenCode Zen not available:', error);
             return false;
         }
     }
@@ -42,7 +36,7 @@ export class OpenCodeZenProvider implements AIProvider {
     /**
      * Generate code using selected model
      */
-    async generateCode(prompt: string, context?: string): Promise<string> {
+    async generateCode(prompt: string, context: any = {}): Promise<string> {
         const messages = [];
 
         if (context) {
@@ -67,7 +61,7 @@ export class OpenCodeZenProvider implements AIProvider {
                 }
             );
 
-            return response.choices[0].message.content;
+            return response.choices[0]?.message?.content || 'No response';
         } catch (error) {
             console.error('Code generation failed:', error);
             throw error;
@@ -75,10 +69,10 @@ export class OpenCodeZenProvider implements AIProvider {
     }
 
     /**
-     * Check if OpenCode Zen is available
+     * Set model selection
      */
-    async isAvailable(): Promise<boolean> {
-        return this.client.isAuthenticated() && await this.client.testConnection();
+    setModel(model: string): void {
+        this.selectedModel = model;
     }
 
     /**
@@ -87,9 +81,9 @@ export class OpenCodeZenProvider implements AIProvider {
     async getModels(): Promise<string[]> {
         try {
             const models = await this.client.getModels();
-            return models.map((m: any) => m.id);
+            return models.map((m: any) => m.id || m.name);
         } catch (error) {
-            console.error('Failed to get models:', error);
+            console.error('Failed to fetch models:', error);
             return [];
         }
     }

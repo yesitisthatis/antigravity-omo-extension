@@ -8,10 +8,14 @@ import { LSPHoverTool } from './tools/lsp/hover';
 import { LSPGotoDefinitionTool } from './tools/lsp/goto-definition';
 import { LSPFindReferencesTool } from './tools/lsp/find-references';
 import { LSPRenameTool } from './tools/lsp/rename';
-import { AgentManager } from './agents/agent-manager';
+import { AgentManager } => './agents/agent-manager';
 import { SisyphusAgent } from './agents/sisyphus';
 import { OracleAgent, ExploreAgent, LibrarianAgent } from './agents/specialists';
 import { BackgroundTaskRunner } from './agents/background-runner';
+import { ASTGrepTool } from './tools/ast-grep';
+import { SupermemoryManager } from './memory/supermemory';
+import { WorkflowEngine, createUltraworkWorkflow } from './workflows/workflow-engine';
+import { MCPManager } from './mcp/mcp-manager';
 
 /**
  * Extension activation - called when extension is first loaded
@@ -45,6 +49,15 @@ export async function activate(context: vscode.ExtensionContext) {
     await agentManager.registerAgent(new ExploreAgent(context));
     await agentManager.registerAgent(new LibrarianAgent(context));
 
+    // Initialize Week 3-4 features
+    const astGrepTool = new ASTGrepTool();
+    const supermemory = SupermemoryManager.getInstance(context);
+    const workflowEngine = WorkflowEngine.getInstance(context);
+    const mcpManager = MCPManager.getInstance(context);
+
+    // Register ultrawork workflow
+    workflowEngine.registerWorkflow(createUltraworkWorkflow());
+
     // Get user's subscription and config
     const subscription = await subscriptionManager.getSubscription();
     const config = await configManager.getConfig();
@@ -54,6 +67,9 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log(`✓ Active accounts: ${multiAccountManager.getAccountCount()}`);
     console.log(`✓ LSP servers: ${lspManager.getActiveLanguages().join(', ') || 'none'}`);
     console.log(`✓ Registered agents: ${agentManager.getAllAgents().length}`);
+    console.log(`✓ Supermemory: ${supermemory.getMemoryCount()} memories`);
+    console.log(`✓ Workflows: ${workflowEngine.getWorkflows().length}`);
+    console.log(`✓ MCP servers: ${mcpManager.getEnabledServers().length} enabled`);
 
     // Register hello world command (for testing)
     const helloWorldCommand = vscode.commands.registerCommand(
@@ -100,6 +116,9 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
 
 **Accounts:** ${accountCount}
 **Background Tasks:** ${config.backgroundTasks ? 'Enabled' : 'Disabled'}
+**Supermemory:** ${supermemory.getMemoryCount()} memories
+**Workflows:** ${workflowEngine.getWorkflows().length}
+**MCP Servers:** ${mcpManager.getEnabledServers().length} enabled
 
 **Extension Version:** 0.1.0
 **Bundle Size:** 373KB
@@ -112,10 +131,21 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
         }
     );
 
+    // Supermemory init command
+    const supermemoryInitCommand = vscode.commands.registerCommand(
+        'omo.supermemoryInit',
+        async () => {
+            vscode.window.showInformationMessage('Indexing codebase...');
+            const count = await supermemory.initializeCodebaseIndex();
+            vscode.window.showInformationMessage(`✓ Indexed ${count} files into Supermemory`);
+        }
+    );
+
     context.subscriptions.push(
         helloWorldCommand,
         showConfigCommand,
         showStatusCommand,
+        supermemoryInitCommand,
         {
             dispose: () => lspManager.dispose()
         }

@@ -213,6 +213,96 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
         }
     );
 
+    // OpenCode Zen commands
+    const { OpenCodeZenProvider } = require('./ai/providers/opencode-zen-provider');
+
+    const configureZenCommand = vscode.commands.registerCommand(
+        'omo.zen.configure',
+        async () => {
+            const config = vscode.workspace.getConfiguration('omo');
+            const currentKey = config.get<string>('apiKeys.opencodeZen', '');
+
+            const apiKey = await vscode.window.showInputBox({
+                prompt: 'Enter your OpenCode Zen API Key',
+                value: currentKey,
+                password: true,
+                placeHolder: 'zen_xxxxxxxxxxxxx'
+            });
+
+            if (apiKey) {
+                await config.update('apiKeys.opencodeZen', apiKey, vscode.ConfigurationTarget.Global);
+                await config.update('zen.enabled', true, vscode.ConfigurationTarget.Global);
+                vscode.window.showInformationMessage('✓ OpenCode Zen configured! API key saved.');
+            }
+        }
+    );
+
+    const testZenConnectionCommand = vscode.commands.registerCommand(
+        'omo.zen.testConnection',
+        async () => {
+            const config = vscode.workspace.getConfiguration('omo');
+            const apiKey = config.get<string>('apiKeys.opencodeZen');
+
+            if (!apiKey) {
+                vscode.window.showErrorMessage('❌ OpenCode Zen API key not configured. Run "OmO: Configure OpenCode Zen" first.');
+                return;
+            }
+
+            const provider = new OpenCodeZenProvider(apiKey);
+            vscode.window.showInformationMessage('Testing OpenCode Zen connection...');
+
+            try {
+                const isAvailable = await provider.isAvailable();
+                if (isAvailable) {
+                    vscode.window.showInformationMessage('✓ OpenCode Zen connection successful!');
+                } else {
+                    vscode.window.showErrorMessage('❌ OpenCode Zen connection failed. Check your API key.');
+                }
+            } catch (error: any) {
+                vscode.window.showErrorMessage(`❌ OpenCode Zen error: ${error.message}`);
+            }
+        }
+    );
+
+    const listZenModelsCommand = vscode.commands.registerCommand(
+        'omo.zen.listModels',
+        async () => {
+            const config = vscode.workspace.getConfiguration('omo');
+            const apiKey = config.get<string>('apiKeys.opencodeZen');
+
+            if (!apiKey) {
+                vscode.window.showErrorMessage('❌ OpenCode Zen API key not configured. Run "OmO: Configure OpenCode Zen" first.');
+                return;
+            }
+
+            const provider = new OpenCodeZenProvider(apiKey);
+            vscode.window.showInformationMessage('Fetching OpenCode Zen models...');
+
+            try {
+                const models = await provider.getModels();
+
+                if (models.length === 0) {
+                    vscode.window.showWarningMessage('No models available from OpenCode Zen');
+                    return;
+                }
+
+                // Show models in a quickpick
+                const selectedModel = await vscode.window.showQuickPick(models, {
+                    placeHolder: 'Select a model to use',
+                    title: `OpenCode Zen Models (${models.length} available)`
+                });
+
+                if (selectedModel) {
+                    await config.update('zen.preferredModel', selectedModel, vscode.ConfigurationTarget.Global);
+                    vscode.window.showInformationMessage(`✓ Selected model: ${selectedModel}`);
+                }
+            } catch (error: any) {
+                vscode.window.showErrorMessage(`❌ Failed to fetch models: ${error.message}`);
+            }
+        }
+    );
+
+
     context.subscriptions.push(
         helloWorldCommand,
         showConfigCommand,
@@ -221,6 +311,9 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
         checkAuthCommand,
         loginCommand,
         refreshTokenCommand,
+        configureZenCommand,
+        testZenConnectionCommand,
+        listZenModelsCommand,
         statusBar,
         {
             dispose: () => lspManager.dispose()

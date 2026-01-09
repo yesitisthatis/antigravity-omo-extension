@@ -18,11 +18,18 @@ import { WorkflowEngine, createUltraworkWorkflow } from './workflows/workflow-en
 import { MCPManager } from './mcp/mcp-manager';
 import { StatusBarManager } from './ui/status-bar';
 import { ProjectDetector } from './ui/project-detector';
+import { logger } from './core/logger';
 
 /**
  * Extension activation - called when extension is first loaded
  */
 export async function activate(context: vscode.ExtensionContext) {
+    // Initialize logger first (creates Output channel immediately)
+    // Must be called AFTER vscode APIs are ready
+    const { Logger } = require('./core/logger');
+    const loggerInstance = Logger.getInstance();
+    loggerInstance.info('OmO Extension activating...');
+
     console.log('🚀 Oh My OpenCode for Antigravity is activating...');
 
     // Initialize core managers
@@ -94,6 +101,19 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize Week 5: UI components
     const statusBar = StatusBarManager.getInstance(context);
     const projectInfo = await ProjectDetector.detectProject();
+
+    // Update status bar
+    if (projectInfo) {
+        console.log(`Detected ${projectInfo.type} project`);
+    }
+
+    // Add logger to subscriptions for disposal
+    context.subscriptions.push({
+        dispose: () => loggerInstance.dispose()
+    });
+
+    loggerInstance.success('OmO Extension activated successfully!');
+    console.log('✓ OmO Extension activated');
 
     // Get user's subscription and config
     const subscription = await subscriptionManager.getSubscription();

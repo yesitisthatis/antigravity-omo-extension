@@ -72,7 +72,8 @@ export abstract class BaseAgent {
      */
     async execute(context: AgentContext): Promise<AgentResponse> {
         try {
-            const { logger } = require('../core/logger');
+            const { Logger } = require('../core/logger');
+            const logger = Logger.getInstance();
             logger.agent(this.name, `Executing: ${context.task.substring(0, 100)}...`);
 
             const startTime = Date.now();

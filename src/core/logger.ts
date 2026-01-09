@@ -10,7 +10,10 @@ export class Logger {
     private isVerbose: boolean = false;
 
     private constructor() {
+        // Create Output channel immediately
         this.outputChannel = vscode.window.createOutputChannel('OmO Extension');
+        console.log('✓ Created OmO Extension Output channel');
+
         this.updateSettings();
 
         // Listen for settings changes
@@ -151,5 +154,4 @@ export class Logger {
     }
 }
 
-// Convenience exports
-export const logger = Logger.getInstance();
+// Just export the Logger class - will be instantiated manually in extension.ts

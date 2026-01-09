@@ -117,6 +117,12 @@ Contributions welcome! This is a rapidly evolving project.
 
 MIT © 2026 OmO Contributors
 
+## 📚 Documentation
+
+- **[User Guide](./docs/USER_GUIDE.md)** - Comprehensive guide to using OmO with Antigravity
+- **[Quick Reference](./docs/QUICK_REFERENCE.md)** - Cheat sheet for commands and settings
+- **[Docs Index](./docs/README.md)** - Full documentation directory
+
 ## 🔗 Links
 
 - [Original Oh My OpenCode](https://github.com/code-yeongyu/oh-my-opencode)

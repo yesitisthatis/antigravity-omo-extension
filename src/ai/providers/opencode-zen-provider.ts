@@ -96,13 +96,6 @@ export class OpenCodeZenProvider {
     }
 
     /**
-     * Select model to use
-     */
-    setModel(model: string): void {
-        this.selectedModel = model;
-    }
-
-    /**
      * Get current model
      */
     getSelectedModel(): string {

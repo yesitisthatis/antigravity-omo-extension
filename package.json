@@ -25,7 +25,6 @@
     "orchestration",
     "automation"
   ],
-  "icon": "icon.png",
   "activationEvents": [
     "onStartupFinished"
   ],

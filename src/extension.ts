@@ -16,6 +16,8 @@ import { ASTGrepTool } from './tools/ast-grep';
 import { SupermemoryManager } from './memory/supermemory';
 import { WorkflowEngine, createUltraworkWorkflow } from './workflows/workflow-engine';
 import { MCPManager } from './mcp/mcp-manager';
+import { StatusBarManager } from './ui/status-bar';
+import { ProjectDetector } from './ui/project-detector';
 
 /**
  * Extension activation - called when extension is first loaded
@@ -58,6 +60,10 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register ultrawork workflow
     workflowEngine.registerWorkflow(createUltraworkWorkflow());
 
+    // Initialize Week 5: UI components
+    const statusBar = StatusBarManager.getInstance(context);
+    const projectInfo = await ProjectDetector.detectProject();
+
     // Get user's subscription and config
     const subscription = await subscriptionManager.getSubscription();
     const config = await configManager.getConfig();
@@ -70,6 +76,8 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log(`✓ Supermemory: ${supermemory.getMemoryCount()} memories`);
     console.log(`✓ Workflows: ${workflowEngine.getWorkflows().length}`);
     console.log(`✓ MCP servers: ${mcpManager.getEnabledServers().length} enabled`);
+    console.log(`✓ Project: ${projectInfo.type}${projectInfo.framework ? ` (${projectInfo.framework})` : ''}`);
+    console.log(`✓ Status bar: Active`);
 
     // Register hello world command (for testing)
     const helloWorldCommand = vscode.commands.registerCommand(
@@ -146,6 +154,7 @@ ${lspLanguages.map(l => `  - ${l}`).join('\n') || '  - None active'}
         showConfigCommand,
         showStatusCommand,
         supermemoryInitCommand,
+        statusBar,
         {
             dispose: () => lspManager.dispose()
         }
